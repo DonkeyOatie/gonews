@@ -11,10 +11,7 @@ func main() {
 
 	c := make(chan string)
 
-	wg.Add(1)
+	go processFiles(c)
+	getFiles(fileNames, c)
 
-	go getFiles(fileNames, c)
-	processFiles(c)
-
-	wg.Wait()
 }
