@@ -2,31 +2,32 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 )
 
 // getFileNames gets the file names as a slice of strings from the index.html
 // at nuviNewsURL
 func getFileNames() []string {
 	var files []string
-	files = append(files, "test one")
-	files = append(files, "test two")
-	files = append(files, "test three")
-	files = append(files, "test four")
-	files = append(files, "test five")
-	files = append(files, "test six")
-	files = append(files, "test seven")
-	files = append(files, "test eight")
-	files = append(files, "test nine")
+	files = append(files, "test_one.zip")
+	files = append(files, "test_two.zip")
+	files = append(files, "test_three.zip")
+	files = append(files, "test_four.zip")
+	files = append(files, "test_five.zip")
+	files = append(files, "test_six.zip")
+	files = append(files, "test_seven.zip")
+	files = append(files, "test_eight.zip")
+	files = append(files, "test_nine.zip")
 	return files
 }
 
 // getFiles iterates over all file names in the list, and if it is a new file
 // starts a routine to download it
-func getFiles(fileNames []string, c chan string) {
+func getFiles(dir string, fileNames []string, c chan string) {
 	// get a file name from the channel
 	for i, file := range fileNames {
 		wg.Add(1)
-		go getFile(file, c)
+		go getFile(filepath.Join(dir, file), c)
 		// only start 4 routines for fetching files at any one time
 		if i > 0 && i % 4 == 0 {
 			wg.Wait()

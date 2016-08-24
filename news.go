@@ -29,6 +29,6 @@ func main() {
 	c := make(chan string)
 
 	go processFiles(c)
-	getFiles(fileNames, c)
+	getFiles(dir, fileNames, c)
 
 }
