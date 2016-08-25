@@ -5,6 +5,7 @@ ci: test lint
 deps:
 	go get golang.org/x/tools/cmd/goimports
 	go get github.com/stretchr/testify
+	go get golang.org/x/net/html
 	go get -u github.com/golang/lint/golint
 	goimports -w .
 	go get .

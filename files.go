@@ -2,22 +2,58 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
+
+	"golang.org/x/net/html"
 )
 
 // getFileNames gets the file names as a slice of strings from the index.html
 // at nuviNewsURL
 func getFileNames() []string {
 	var files []string
-	files = append(files, "test_one.zip")
-	files = append(files, "test_two.zip")
-	files = append(files, "test_three.zip")
-	files = append(files, "test_four.zip")
-	files = append(files, "test_five.zip")
-	files = append(files, "test_six.zip")
-	files = append(files, "test_seven.zip")
-	files = append(files, "test_eight.zip")
-	files = append(files, "test_nine.zip")
+
+	resp, err := http.Get(nuviNewsURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	tk := html.NewTokenizer(resp.Body)
+
+	// This is pretty messy.  In fact it is hideous.  In short, we are
+	// iterating through the html elements in the index.html to find the
+	// table, and then the links within the table so we can get the files
+	// name (the text values in link)
+	for tk.Token().Data != "html" {
+		// we are past the doctype, lets get into the HTML
+		tt := tk.Next()
+		if tt == html.StartTagToken {
+			t := tk.Token()
+			// once we hit the table, step inside it
+			if t.Data == "td" {
+				inner := tk.Next()
+				if inner == html.StartTagToken {
+					inner = tk.Next()
+					// we are now at the actual values,
+					// make sure its a file name and not a
+					// link to the parent directory
+					if inner == html.TextToken {
+						value := (string)(tk.Text())
+						if strings.Contains(value, "zip") {
+							t := strings.TrimSpace(value)
+							// good job, return it for processing
+							files = append(files, t)
+						}
+					}
+				}
+			}
+		}
+	}
 	return files
 }
 
@@ -27,9 +63,9 @@ func getFiles(dir string, fileNames []string, c chan string) {
 	// get a file name from the channel
 	for i, file := range fileNames {
 		wg.Add(1)
-		go getFile(filepath.Join(dir, file), c)
+		go getFile(dir, file, c)
 		// only start 4 routines for fetching files at any one time
-		if i > 0 && i % 4 == 0 {
+		if i > 0 && i%4 == 0 {
 			wg.Wait()
 		}
 	}
@@ -42,8 +78,22 @@ func getFiles(dir string, fileNames []string, c chan string) {
 // getFile downloads the file with name fileName and once downloaded, puts the
 // name in the channel so processing can begin by whatever is listening to the
 // channel
-func getFile(fileName string, c chan string) {
+func getFile(dir string, fileName string, c chan string) {
 	// get the file if the key is not in redis already
+
+	// download the file
+	out, err := os.Create(filepath.Join(dir, fileName))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer out.Close()
+	resp, err := http.Get(nuviNewsURL + fileName)
+	defer resp.Body.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// once download has finished, add name to channel
 	// so it can be processed

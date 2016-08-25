@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log"
-	"sync"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"sync"
 )
 
 // nuviNewsURL is the URL which stores the zip files containing news articles
