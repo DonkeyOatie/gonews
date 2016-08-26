@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"archive/zip"
 	"io"
 	"log"
 	"net/http"
@@ -82,11 +82,13 @@ func getFile(dir string, fileName string, c chan string) {
 	// get the file if the key is not in redis already
 
 	// download the file
-	out, err := os.Create(filepath.Join(dir, fileName))
+	filePath := filepath.Join(dir, fileName)
+	out, err := os.Create(filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer out.Close()
+
 	resp, err := http.Get(nuviNewsURL + fileName)
 	defer resp.Body.Close()
 
@@ -97,17 +99,55 @@ func getFile(dir string, fileName string, c chan string) {
 
 	// once download has finished, add name to channel
 	// so it can be processed
-	c <- fileName
+	c <- filePath
 }
 
 // processFiles listens to the channel c and when a file name is added, it
 // begins processing the file -> unzip, extract, tell redis to store
 func processFiles(c chan string) {
-	for file := range c {
+	for filePath := range c {
 		// process file
-		fmt.Println(file)
+		filePathParts := strings.Split(filePath, "/")
+		dir := filePathParts[0]
+		file := filePathParts[1]
+		unixEpoch := strings.Split(file, ".")[0]
+		unzipFile(filePath, filepath.Join(dir, unixEpoch))
 		// decrement wait group counter, we have finished with this
 		// file
 		wg.Done()
+	}
+}
+
+// unzipFile extracts the src archive into the dest directory
+func unzipFile(src, dest string) {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer r.Close()
+
+	os.MkdirAll(dest, 0755)
+
+	extract := func(arc *zip.File) {
+		rc, err := arc.Open()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rc.Close()
+
+		path := filepath.Join(dest, arc.Name)
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, arc.Mode())
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		_, err = io.Copy(f, rc)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	for _, f := range r.File {
+		extract(f)
 	}
 }

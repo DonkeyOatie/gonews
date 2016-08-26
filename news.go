@@ -30,5 +30,4 @@ func main() {
 
 	go processFiles(c)
 	getFiles(dir, fileNames, c)
-
 }

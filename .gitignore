@@ -28,3 +28,7 @@ coverage.out
 
 # Binary
 gonews
+
+# Archive files
+.DS_Store
+zips*/*
