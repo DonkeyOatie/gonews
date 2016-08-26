@@ -15,6 +15,11 @@ import (
 	"golang.org/x/net/html"
 )
 
+type archive struct {
+	UnixEpoch string
+	Document  document
+}
+
 type document struct {
 	Type            string  `xml:"type"`
 	Forum           string  `xml:"forum"`
@@ -154,7 +159,11 @@ func processFiles(c chan string) {
 			var d document
 			xml.Unmarshal(b, &d)
 
-			fmt.Println(d.Type)
+			var arc archive
+			arc.UnixEpoch = unixEpoch
+			arc.Document = d
+
+			fmt.Println(arc.UnixEpoch + " " + arc.Document.Type)
 			xmlFile.Close()
 		}
 

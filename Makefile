@@ -6,6 +6,7 @@ deps:
 	go get golang.org/x/tools/cmd/goimports
 	go get github.com/stretchr/testify
 	go get golang.org/x/net/html
+	go get gopkg.in/redis.v4
 	go get -u github.com/golang/lint/golint
 	goimports -w .
 	go get .
