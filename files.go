@@ -92,11 +92,16 @@ func getFileNames() []string {
 func getFiles(dir string, fileNames []string, c chan string) {
 	// get a file name from the channel
 	for i, file := range fileNames {
-		wg.Add(1)
-		go getFile(dir, file, c)
-		// only start 4 routines for fetching files at any one time
-		if i > 0 && (i+1)%4 == 0 {
-			wg.Wait()
+		// get the file if the key is not in redis already
+		unixEpoch := strings.Split(file, ".")[0]
+		fmt.Println(unixEpoch)
+		if !isKeyPresent(unixEpoch) {
+			wg.Add(1)
+			go getFile(dir, file, c)
+			// only start 4 routines for fetching files at any one time
+			if i > 0 && (i+1)%4 == 0 {
+				wg.Wait()
+			}
 		}
 	}
 	// finally wait incase we have a number of files that is not a multiple
@@ -109,8 +114,6 @@ func getFiles(dir string, fileNames []string, c chan string) {
 // name in the channel so processing can begin by whatever is listening to the
 // channel
 func getFile(dir string, fileName string, c chan string) {
-	// get the file if the key is not in redis already
-
 	// download the file
 	filePath := filepath.Join(dir, fileName)
 	out, err := os.Create(filePath)
@@ -164,8 +167,13 @@ func processFiles(c chan string) {
 			arc.Document = d
 
 			fmt.Println(arc.UnixEpoch + " " + arc.Document.Type)
+			storeNewsPost(string(b))
 			xmlFile.Close()
 		}
+
+		// we have finished processing all XML files in archive so add
+		// the key to the set so that we do not process it again
+		storeNewsKey(unixEpoch)
 
 		// decrement wait group counter, we have finished with this
 		// file
