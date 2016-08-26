@@ -166,7 +166,6 @@ func processFiles(c chan string) {
 			arc.UnixEpoch = unixEpoch
 			arc.Document = d
 
-			fmt.Println(arc.UnixEpoch + " " + arc.Document.Type)
 			storeNewsPost(string(b))
 			xmlFile.Close()
 		}
