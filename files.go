@@ -106,12 +106,18 @@ func getFile(dir string, fileName string, c chan string) {
 // begins processing the file -> unzip, extract, tell redis to store
 func processFiles(c chan string) {
 	for filePath := range c {
-		// process file
+		// process file -> unzip and extract
 		filePathParts := strings.Split(filePath, "/")
 		dir := filePathParts[0]
 		file := filePathParts[1]
 		unixEpoch := strings.Split(file, ".")[0]
-		unzipFile(filePath, filepath.Join(dir, unixEpoch))
+		outDir := filepath.Join(dir, unixEpoch)
+
+		unzipFile(filePath, outDir)
+
+		// iterate over all files in the outDir and save each one to
+		// redis
+
 		// decrement wait group counter, we have finished with this
 		// file
 		wg.Done()
@@ -119,35 +125,44 @@ func processFiles(c chan string) {
 }
 
 // unzipFile extracts the src archive into the dest directory
+// WARNING: this method does not currently deal with embedded directories
+// within the archive, it expects everything that is at the root of the archive
+// to be a file
 func unzipFile(src, dest string) {
-	r, err := zip.OpenReader(src)
+	arc, err := zip.OpenReader(src)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer r.Close()
+	defer arc.Close()
 
+	// make a dir to put all the xml files in
 	os.MkdirAll(dest, 0755)
 
-	extract := func(arc *zip.File) {
-		rc, err := arc.Open()
+	extract := func(arcFile *zip.File) {
+		// Open the archive file
+		rc, err := arcFile.Open()
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer rc.Close()
 
-		path := filepath.Join(dest, arc.Name)
-		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, arc.Mode())
+		// create a file to put the contents in
+		path := filepath.Join(dest, arcFile.Name)
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, arcFile.Mode())
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer f.Close()
+
+		// copy the contents to the new file
 		_, err = io.Copy(f, rc)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	for _, f := range r.File {
+	// for each file in the archive, extract it
+	for _, f := range arc.File {
 		extract(f)
 	}
 }
