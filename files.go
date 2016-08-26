@@ -2,8 +2,10 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +14,28 @@ import (
 
 	"golang.org/x/net/html"
 )
+
+type document struct {
+	Type            string  `xml:"type"`
+	Forum           string  `xml:"forum"`
+	ForumTitle      string  `xml:"forum_title"`
+	DiscussionTitle string  `xml:"discussion_title"`
+	Language        string  `xml:"language"`
+	GMTOffset       string  `xml:"gmt_offset"`
+	TopicURL        string  `xml:"topic_url"`
+	TopicText       string  `xml:"topic_text"`
+	SpamScore       float64 `xml:"spam_score"`
+	PostNum         int     `xml:"post_num"`
+	PostID          string  `xml:"post_id"`
+	PostDate        string  `xml:"post_date"`
+	PostTime        string  `xml:"post_time"`
+	Username        string  `xml:"username"`
+	Post            string  `xml:"post"`
+	Signature       string  `xml:"signature"`
+	ExternalLinks   string  `xml:"external_links"`
+	Country         string  `xml:"country"`
+	MainImage       string  `xml:"main_image"`
+}
 
 // getFileNames gets the file names as a slice of strings from the index.html
 // at nuviNewsURL
@@ -120,7 +144,18 @@ func processFiles(c chan string) {
 		// redis
 		fileList := getXMLFileNames(outDir)
 		for _, file := range fileList {
-			fmt.Println(file)
+			xmlFile, err := os.Open(file)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			b, _ := ioutil.ReadAll(xmlFile)
+
+			var d document
+			xml.Unmarshal(b, &d)
+
+			fmt.Println(d.Type)
+			xmlFile.Close()
 		}
 
 		// decrement wait group counter, we have finished with this
