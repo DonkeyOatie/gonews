@@ -223,6 +223,8 @@ func unzipFile(src, dest string) {
 	}
 }
 
+// getXMLFileNames gets the names of the unpacked xml files from the archive by
+// walking the directory that they are in
 func getXMLFileNames(dir string) []string {
 	fileList := []string{}
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
