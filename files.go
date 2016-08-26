@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -65,7 +66,7 @@ func getFiles(dir string, fileNames []string, c chan string) {
 		wg.Add(1)
 		go getFile(dir, file, c)
 		// only start 4 routines for fetching files at any one time
-		if i > 0 && i%4 == 0 {
+		if i > 0 && (i+1)%4 == 0 {
 			wg.Wait()
 		}
 	}
@@ -117,6 +118,10 @@ func processFiles(c chan string) {
 
 		// iterate over all files in the outDir and save each one to
 		// redis
+		fileList := getXMLFileNames(outDir)
+		for _, file := range fileList {
+			fmt.Println(file)
+		}
 
 		// decrement wait group counter, we have finished with this
 		// file
@@ -165,4 +170,13 @@ func unzipFile(src, dest string) {
 	for _, f := range arc.File {
 		extract(f)
 	}
+}
+
+func getXMLFileNames(dir string) []string {
+	fileList := []string{}
+	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+		fileList = append(fileList, path)
+		return nil
+	})
+	return fileList
 }
